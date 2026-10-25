@@ -1,0 +1,29 @@
+id,test,owner,result,ms,detail
+1,Detect IP,Thirudhanish,PASS,0.104,1 finding(s)
+2,Remediate IP,Praveenkanth,PASS,0.081,set h2 IP 10.0.0.2/24
+3,Detect ROUTING,Thirudhanish,PASS,0.05,1 finding(s)
+4,Remediate ROUTING,Praveenkanth,PASS,0.074,FlowMod: s2 -> s4
+5,Detect FIREWALL,Thirudhanish,PASS,0.045,1 finding(s)
+6,Remediate FIREWALL,Praveenkanth,PASS,0.054,reinstall allow rule on s2
+7,Detect PORT,Thirudhanish,PASS,0.044,2 finding(s)
+8,Remediate PORT,Praveenkanth,PASS,0.064,close extra ports on h1
+9,Detect SWITCH,Thirudhanish,PASS,0.045,1 finding(s)
+10,Remediate SWITCH,Praveenkanth,PASS,0.053,"FlowMod: restore s2 (1, 2)"
+11,No false positives on baseline,Thirudhanish,PASS,0.037,0 findings
+12,Stress: 5 simultaneous faults,Praveenkanth,PASS,0.217,C=1.0
+13,Idempotent remediation,Praveenkanth,PASS,0.062,2nd cycle no change
+14,Detection-only keeps fault,Pratheeswaran,PASS,0.049,fault persists without auto-fix
+15,Failover primary->backup->primary,Rajasimman,PASS,0.01,PRIMARY->BACKUP->BACKUP->PRIMARY
+16,Flow rules cover primary path,Rajasimman,PASS,0.003,"s1,s2,s4 present"
+17,Selectable host and switch counts,Pratheeswaran,PASS,0.086,"14 nodes, 14 links"
+18,Topology count validation,Pratheeswaran,PASS,0.006,out-of-range host count rejected
+19,Dynamic live paths and ports,Rajasimman,PASS,0.042,8-switch paths and 6 host ports generated
+20,All supported live path sizes,Rajasimman,PASS,75.817,both paths validate for all supported host/switch counts
+21,Live flow auto-remediation,Rajasimman,PASS,1.651,PRIMARY path restored across 4 switches
+22,Live drop-flow detection,Thirudhanish,PASS,0.458,"blocking flow detected as [(1, 0)]"
+23,Live subnet-mask detection,Thirudhanish,PASS,0.092,SUBNET_MASK_MISMATCH
+24,Live host IP and route remediation,Praveenkanth,PASS,0.204,"h1 address restored to 10.0.0.1/24, h1 unexpected route 192.168.50.0/24 removed"
+25,Live scan remediate and verify,Praveenkanth,PASS,0.467,host/flow repaired and verified; listener left for operator review
+26,Demo end-to-end remediation,Praveenkanth,PASS,0.191,"sample IP, route, port, and flow faults repaired and verified"
+27,Benchmark: 200 detect+fix loops,Pratheeswaran,PASS,10.957,"mean 0.019 ms, p95 0.042 ms"
+28,Stress x200 (5 faults each),Pratheeswaran,PASS,22.954,200/200 rounds healed

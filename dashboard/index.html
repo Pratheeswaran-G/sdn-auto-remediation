@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SDN Testing Dashboard</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#0b1220;--panel:#141c2e;--line:#27334d;--txt:#e6ecf5;--mut:#8a98b3;--ok:#22c55e;--bad:#ef4444;--warn:#f59e0b;--blue:#3b82f6;--teal:#14b8a6;--canvas:#0a0f1c;color-scheme:dark}
+:root[data-theme="light"]{--bg:#eef2f7;--panel:#fff;--line:#d5dce8;--txt:#14202f;--mut:#5d6b82;--canvas:#f6f8fb;color-scheme:light}
+:root[data-theme="dark"]{--bg:#0b1220;--panel:#141c2e;--line:#27334d;--txt:#e6ecf5;--mut:#8a98b3;--canvas:#0a0f1c;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--txt);font:14px/1.4 Calibri,Arial,sans-serif}
+header{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:12px 16px;background:var(--panel);border-bottom:1px solid var(--line)}
+h1{font-size:17px;margin:0 12px 0 0}h1 small{display:block;color:var(--mut);font-weight:400;font-size:11px}
+button{border:0;border-radius:6px;padding:7px 12px;color:#fff;font:600 12px Calibri,Arial,sans-serif;cursor:pointer}
+button:hover{filter:brightness(1.12)}.b-blue{background:var(--blue)}.b-teal{background:var(--teal)}.b-gray{background:#64748b}
+.f{background:#b45309}.sp{flex:1}.badge{font-size:11px;padding:3px 8px;border-radius:99px;background:var(--line);color:var(--mut)}
+main{display:grid;grid-template-columns:minmax(0,1fr) 270px;gap:12px;padding:12px 16px}
+@media(max-width:860px){main{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px}
+.card h3{margin:0 0 8px;font-size:11px;letter-spacing:.08em;color:var(--mut);text-transform:uppercase}
+#cv{background:var(--canvas);border-radius:8px;width:100%;height:auto;display:block}
+.row{display:flex;align-items:center;gap:8px;margin:5px 0;font-size:13px}.dot{width:12px;height:12px;border-radius:50%}
+.kv{display:flex;justify-content:space-between;margin:4px 0}.kv b{color:var(--txt)}.kv span{color:var(--mut)}
+.col{display:flex;flex-direction:column;gap:12px}
+.bottom{display:grid;grid-template-columns:1.3fr 1fr;gap:12px;padding:0 16px 16px}
+@media(max-width:860px){.bottom{grid-template-columns:1fr}}
+#log{height:210px;overflow:auto;font:12px Consolas,monospace}
+#log div{padding:3px 0;border-bottom:1px solid var(--line)}
+.t-ALERT{color:var(--bad)}.t-REMEDIATE{color:var(--ok)}.t-INJECT{color:var(--warn)}.t-FAILED{color:var(--bad)}
+.bar{height:10px;border-radius:5px;background:var(--line);overflow:hidden;margin:3px 0 9px}.bar i{display:block;height:100%;transition:width .5s}
+.tg{display:flex;gap:6px;align-items:center;font-size:12px;color:var(--mut)}
+.node{cursor:pointer}.node text{fill:var(--txt);font:600 11px Calibri,Arial,sans-serif}
+.tst{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}.tst th{text-align:left;color:var(--mut);font-weight:600;padding:5px 8px;border-bottom:1px solid var(--line)}.tst td{padding:5px 8px;border-bottom:1px solid var(--line);vertical-align:middle}.pp{color:var(--ok);font-weight:700}.pf{color:var(--bad);font-weight:700}.mb{display:inline-block;width:60px;height:6px;border-radius:3px;background:var(--line);margin-right:6px;vertical-align:middle}.mb i{display:block;height:100%;background:var(--blue);border-radius:3px}.tsum{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px}#tOut{width:100%;height:110px;margin-top:8px;background:var(--canvas);color:var(--txt);border:1px solid var(--line);border-radius:6px;font:11px Consolas,monospace}@keyframes pulse{50%{opacity:.35}}.crit{animation:pulse .9s infinite}
+</style>
+</head>
+<body>
+<header>
+  <h1>SDN Testing Dashboard<small>Detection, Auto-Remediation and Testing · CS23502</small></h1>
+  <button class="b-blue" id="bRef">↻ Refresh</button>
+  <button class="b-teal" id="bAuto">Auto-Remediate: ON</button>
+  <button class="b-gray" id="bReset">Reset</button>
+  <button class="b-gray" id="bTheme">◐ Theme</button>
+  <span class="sp"></span>
+  <span class="tg">Inject fault:</span>
+  <button class="f" data-k="IP">Wrong IP</button><button class="f" data-k="ROUTING">Routing</button>
+  <button class="f" data-k="FIREWALL">Firewall</button><button class="f" data-k="PORT">Open Ports</button>
+  <button class="f" data-k="SWITCH">Switch</button>
+  <label class="tg" for="hostCount">Hosts (demo + live)</label><input id="hostCount" type="number" min="2" max="20" value="2" style="width:58px">
+  <label class="tg" for="switchCount">Switches (demo + live)</label><input id="switchCount" type="number" min="4" max="16" value="4" style="width:58px">
+  <button class="b-blue" id="applyTopology">Apply topology</button>
+  <button class="b-gray" id="liveCommandsButton">Live WSL commands</button>
+  <span class="badge" id="mode">…</span>
+</header>
+<main>
+  <div class="card"><h3>Network Topology (resilient primary and backup paths)</h3>
+    <svg id="cv" viewBox="0 0 660 330" role="img" aria-label="Network topology"></svg></div>
+  <div class="col">
+    <div class="card"><h3>Legend</h3>
+      <div class="row"><span class="dot" style="background:var(--ok)"></span>Healthy</div>
+      <div class="row"><span class="dot" style="background:var(--bad)"></span>Critical (fault detected)</div>
+      <div class="row"><span class="dot" style="background:var(--warn)"></span>Remediating</div>
+      <div class="row">◇ Host &nbsp; ▭ Switch</div></div>
+    <div class="card"><h3>Network Stats</h3>
+      <div class="kv"><span>Total devices</span><b id="sD">6</b></div>
+      <div class="kv"><span>Switches</span><b id="sS">4</b></div><div class="kv"><span>Hosts</span><b id="sH">2</b></div>
+      <div class="kv"><span>Links</span><b id="sL">6</b></div>
+      <div class="kv"><span>Active faults</span><b id="sF">0</b></div>
+      <div class="kv"><span>Confidence score C</span><b id="sC">0</b></div></div>
+    <div class="card"><h3>Selected Device</h3><div id="sel" style="color:var(--mut)">Click a node</div></div>
+  </div>
+</main>
+<section class="card" id="liveCommandsPanel" style="display:none;margin:0 16px 16px">
+  <h3 id="liveCommandsTitle">Run this selected topology in WSL</h3>
+  <p id="liveCommandsNotice">These counts are shared by the demo and live command generator. For an already-running Mininet lab, exit it and restart both commands for the new counts.</p>
+  <textarea id="liveCommands" readonly style="width:100%;height:110px;background:var(--canvas);color:var(--txt);border:1px solid var(--line);border-radius:6px;font:12px Consolas,monospace"></textarea>
+</section>
+<div class="bottom">
+  <div class="card"><h3>Alerts and Remediation Log</h3><div id="log"></div></div>
+  <div class="card"><h3>Performance (this session)</h3>
+    <div class="kv"><span>Faults fixed</span><b id="mF">0</b></div>
+    <div class="kv"><span>Avg time-to-detect</span><b id="mD">–</b></div>
+    <div class="kv"><span>Avg time-to-fix</span><b id="mR">–</b></div>
+    <div class="kv"><span>Availability</span><b id="mA">100%</b></div>
+    <h3 style="margin-top:12px">Recovery time: manual vs auto (s)</h3>
+    <div class="kv"><span>Manual (baseline)</span><b>48.0</b></div><div class="bar"><i style="width:100%;background:var(--bad)"></i></div>
+    <div class="kv"><span>Detection-only</span><b>22.0</b></div><div class="bar"><i style="width:46%;background:var(--warn)"></i></div>
+    <div class="kv"><span>Auto-remediation</span><b id="mAuto">4.0</b></div><div class="bar"><i id="mBar" style="width:8%;background:var(--ok)"></i></div>
+  </div>
+</div>
+<section class="card" style="margin:0 16px 16px">
+  <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center"><h3 style="margin:0;flex:1">Testing Lab · detection, remediation, failover, stress, benchmark</h3>
+  <button class="b-blue" id="tRun">▶ Run all tests</button><button class="f" id="tStress">⚡ Stress ×200</button><button class="b-gray" id="tCsv">Show CSV</button></div>
+  <div class="tsum" id="tSum"></div>
+  <div style="overflow-x:auto"><table class="tst"><thead><tr><th>#</th><th>Test</th><th>Owner</th><th>Result</th><th>Time (ms)</th><th>Detail</th></tr></thead><tbody id="tBody"></tbody></table></div>
+  <textarea id="tOut" readonly hidden></textarea>
+</section>
+<script>
+// ---------- Browser simulation engine (mirrors core/engine.py) ----------
+let BASE;
+const SEV={IP:"HIGH",ROUTING:"HIGH",FIREWALL:"HIGH",PORT:"MEDIUM",SWITCH:"HIGH"},W={IP:.25,ROUTING:.25,FIREWALL:.2,PORT:.1,SWITCH:.2};
+let NODES={},LINKS=[],BACKUP_LINKS=[];
+const clone=o=>JSON.parse(JSON.stringify(o));
+function buildBrowserTopology(hostCount,switchCount){
+ const primary=["s1",...Array.from({length:Math.floor((switchCount-1)/2)},(_,i)=>`s${i*2+2}`),`s${switchCount}`];
+ const backup=["s1",...Array.from({length:Math.floor((switchCount-2)/2)},(_,i)=>`s${i*2+3}`),`s${switchCount}`];
+ const links=[],backupLinks=[];
+ for(const path of [primary,backup])for(let i=0;i<path.length-1;i++)links.push([path[i],path[i+1]]);
+ for(let i=0;i<backup.length-1;i++)backupLinks.push(backup[i]+":"+backup[i+1]);
+ const sourceCount=Math.ceil(hostCount/2),hosts=Array.from({length:hostCount},(_,i)=>`h${i+1}`);
+ hosts.forEach((h,i)=>links.push([h,i<sourceCount?"s1":`s${switchCount}`]));
+ const hostBaseline=Object.fromEntries(hosts.map((h,i)=>[h,`10.0.0.${i+1}/24`]));
+ const routes=Object.fromEntries(primary.slice(0,-1).map((s,i)=>[s,primary[i+1]]));routes[primary[primary.length-1]]=`h${hostCount}`;
+ const flows=Object.fromEntries(primary.map(s=>[s,s===`s${switchCount}`?"1>3":"1>2"]));
+ const ports=Object.fromEntries(hosts.map(h=>[h,h==="h2"?[80]:[]]));
+ BASE={hosts:hostBaseline,routes,fw:{s2:"allow"},ports,flows};
+ NODES={};
+ const swX=switchCount===1?330:i=>130+400*i/(switchCount-1);
+ for(let i=1;i<=switchCount;i++){const x=swX(i-1),y=i===1||i===switchCount?165:(i%2===0?78:252);NODES[`s${i}`]=[x,y,"s"]}
+ hosts.forEach((h,i)=>{const source=i<sourceCount,groupIndex=source?i:i-sourceCount,groupSize=source?sourceCount:hostCount-sourceCount;
+  NODES[h]=[source?35:625,Math.max(32,Math.min(298,165+(groupIndex-(groupSize-1)/2)*34)),"h"]});
+ LINKS=links;BACKUP_LINKS=backupLinks;
+ return {nodes:hosts.concat(Array.from({length:switchCount},(_,i)=>`s${i+1}`)),links};
+}
+let CURRENT_TOPO=buildBrowserTopology(2,4);
+const Sim={st:clone({h:BASE.hosts,r:BASE.routes,f:BASE.fw,p:BASE.ports,w:BASE.flows}),log:[],t0:{},fixed:[],
+ reset(){this.st=clone({h:BASE.hosts,r:BASE.routes,f:BASE.fw,p:BASE.ports,w:BASE.flows});this.log=[];this.t0={};this.fixed=[]},
+ L(ev,type,msg){this.log.push({event:ev,type,msg,t:new Date().toLocaleTimeString()})},
+ inject(k){const s=this.st;({IP:()=>s.h.h2="10.0.5.77/24",ROUTING:()=>s.r.s2="s3",FIREWALL:()=>s.f.s2="drop",PORT:()=>s.p.h1=[23,3389],SWITCH:()=>s.w.s2="1>3"})[k]();this.t0[k]=performance.now();this.L("INJECT",k,"fault injected: "+k)},
+ detect(){const s=this.st,o=[],A=(type,target,msg)=>o.push({type,target,msg,severity:SEV[type],weight:W[type]});
+  for(const h in BASE.hosts)if(s.h[h]!==BASE.hosts[h])A("IP",h,`${h} IP ${s.h[h]}, expected ${BASE.hosts[h]}`);
+  for(const x in BASE.routes)if(s.r[x]!==BASE.routes[x])A("ROUTING",x,`${x} next hop ${s.r[x]}, expected ${BASE.routes[x]}`);
+  for(const x in BASE.fw)if(s.f[x]!==BASE.fw[x])A("FIREWALL",x,`${x} rule “${s.f[x]}” blocks valid traffic`);
+  for(const h in BASE.ports)s.p[h].filter(p=>!BASE.ports[h].includes(p)).forEach(p=>A("PORT",h,`${h} unnecessary open port ${p}`));
+  for(const x in BASE.flows)if(s.w[x]!==BASE.flows[x])A("SWITCH",x,`${x} flow ${s.w[x]}, expected ${BASE.flows[x]}`);return o},
+ fix(f){const s=this.st,g=f.target;return({IP:()=>{s.h[g]=BASE.hosts[g];return`set ${g} IP ${BASE.hosts[g]}`},ROUTING:()=>{s.r[g]=BASE.routes[g];return`FlowMod: ${g} → ${BASE.routes[g]}`},
+  FIREWALL:()=>{s.f[g]=BASE.fw[g];return`reinstall allow rule on ${g}`},PORT:()=>{s.p[g]=s.p[g].filter(p=>BASE.ports[g].includes(p));return`close extra ports on ${g}`},
+  SWITCH:()=>{s.w[g]=BASE.flows[g];return`FlowMod: restore ${g} ${BASE.flows[g]}`}})[f.type]()},
+ cycle(){this.detect().forEach(f=>{const ta=performance.now();this.L("ALERT",f.type,f.msg);
+   const act=this.fix(f);const ok=!this.detect().some(d=>d.type===f.type&&d.target===f.target);
+   this.L(ok?"REMEDIATE":"FAILED",f.type,act);if(ok)this.fixed.push({d:(ta-(this.t0[f.type]||ta))/1000,r:(performance.now()-ta)/1000})})},
+ snap(){const d=this.detect(),bad=new Set(d.map(x=>x.target));return{topo:CURRENT_TOPO,host_count:Object.keys(BASE.hosts).length,switch_count:Object.keys(NODES).length-Object.keys(BASE.hosts).length,
+  health:Object.fromEntries(Object.keys(NODES).map(n=>[n,bad.has(n)?"critical":"healthy"])),
+  findings:d,score:+[...new Set(d.map(x=>x.type))].reduce((a,t)=>a+W[t],0).toFixed(2),log:this.log.slice(-60),fixed:this.fixed}}};
+
+// ---------- API layer: uses Flask backend if reachable, else the simulation ----------
+let API=false,auto=true,flash={};
+async function call(path,method="GET",body){
+ const r=await fetch(path,{method,headers:body?{"Content-Type":"application/json"}:{},body:body?JSON.stringify(body):undefined});
+ const contentType=r.headers.get("content-type")||"";
+ if(!contentType.includes("application/json")){
+  const bodyText=(await r.text()).slice(0,160).replace(/\s+/g," ");
+  throw new Error(`API ${path} returned non-JSON (${r.status}). Restart the Flask server to load the latest routes. ${bodyText}`)
+ }
+ const data=await r.json();
+ if(!r.ok)throw new Error(data.error||`Request failed (${r.status})`);
+ return data
+}
+async function snapshot(){
+  if(API){try{const s=await call("/api/snapshot");auto=s.auto;return s}catch(e){API=false}}
+  if(auto){const before=Sim.detect(),age=performance.now()-Math.min(...Object.values(Sim.t0),Infinity);if(before.length&&age>1800){before.forEach(f=>flash[f.target]=Date.now());Sim.cycle();Sim.t0={}}}
+  return Sim.snap()}
+async function inject(k){if(API){try{await call("/api/inject/"+k,"POST");return}catch(e){API=false}}Sim.inject(k)}
+async function setAuto(v){auto=v;if(API){try{await call("/api/auto/"+(v?1:0),"POST")}catch(e){}}document.getElementById("bAuto").textContent="Auto-Remediate: "+(v?"ON":"OFF")}
+async function reset(){if(API){try{await call("/api/reset","POST")}catch(e){}}Sim.reset()}
+async function applyTopology(){
+ const hosts=Number($("hostCount").value),switches=Number($("switchCount").value);
+ if(!Number.isInteger(hosts)||hosts<2||hosts>20||!Number.isInteger(switches)||switches<4||switches>16){$("mode").textContent="Choose 2–20 hosts and 4–16 switches";return}
+ if(API){try{const s=await call("/api/topology","POST",{hosts,switches});$("mode").textContent="Backend: Flask API";$("hostCount").value=s.host_count;$("switchCount").value=s.switch_count;render(s);showLiveCommands();return}catch(e){$("mode").textContent=e.message;return}}
+ CURRENT_TOPO=buildBrowserTopology(hosts,switches);Sim.reset();sel=null;tick();showLiveCommands()
+}
+function showLiveCommands(){
+ const hosts=Number($("hostCount").value),switches=Number($("switchCount").value);
+ if(!Number.isInteger(hosts)||hosts<2||hosts>20||!Number.isInteger(switches)||switches<4||switches>16){$("mode").textContent="Choose 2–20 hosts and 4–16 switches";return}
+ $("liveCommands").value=`# Terminal 1 — controller (from the project root)
+cd live_sdn
+SDN_HOSTS=${hosts} SDN_SWITCHES=${switches} osken-manager --verbose controller.py
+
+# Terminal 2 — live Mininet lab (from the project root)
+sudo env PYTHONPATH="$PWD/live_sdn" SDN_HOSTS=${hosts} SDN_SWITCHES=${switches} python3 ndc/auto_remediation_full.py --mode live --hosts ${hosts} --switches ${switches}`;
+ $("liveCommandsPanel").style.display="block"
+}
+function updateLiveCommands(){
+ if($("liveCommandsPanel").style.display!=="none")showLiveCommands()
+}
+
+// ---------- Rendering ----------
+const $=id=>document.getElementById(id),NS="http://www.w3.org/2000/svg";let sel=null,last=null,avail=[];
+function el(t,a,p){const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);p&&p.appendChild(e);return e}
+function draw(s){const cv=$("cv");cv.innerHTML="";
+  const down=s.findings.some(f=>["ROUTING","FIREWALL","SWITCH"].includes(f.type));
+  const topology=s.topo||CURRENT_TOPO;
+  topology.links.forEach(([a,b])=>{if(!NODES[a]||!NODES[b])return;const backup=BACKUP_LINKS.includes(a+":"+b);
+    el("line",{x1:NODES[a][0],y1:NODES[a][1],x2:NODES[b][0],y2:NODES[b][1],stroke:backup?"#64748b":(down?"#ef4444":"#22c55e"),"stroke-width":backup?1.5:3,"stroke-dasharray":backup?"6 5":"0",opacity:backup?.7:.9},cv)});
+  for(const n in NODES){const [x,y,t]=NODES[n],h=s.health[n],rem=flash[n]&&Date.now()-flash[n]<1600;
+    const c=rem?"#f59e0b":h==="critical"?"#ef4444":"#22c55e",g=el("g",{class:"node"},cv);g.onclick=()=>{sel=n;info(s)};
+    if(t==="h")el("path",{d:`M${x} ${y-17}L${x+17} ${y}L${x} ${y+17}L${x-17} ${y}Z`,fill:c,stroke:"#fff","stroke-width":2,class:h==="critical"&&!rem?"crit":""},g);
+    else el("rect",{x:x-22,y:y-11,width:44,height:22,rx:4,fill:c,stroke:"#fff","stroke-width":2,class:h==="critical"&&!rem?"crit":""},g);
+    const tx=el("text",{x,y:y+(t==="h"?32:28),"text-anchor":"middle"},g);tx.textContent=n}}
+function info(s){if(!sel){return}const f=s.findings.filter(x=>x.target===sel);
+  $("sel").innerHTML=`<div class="kv"><span>Device</span><b>${sel}</b></div><div class="kv"><span>Status</span><b style="color:var(--${f.length?"bad":"ok"})">${f.length?"CRITICAL":"HEALTHY"}</b></div>`+(f.map(x=>`<div style="color:var(--bad);font-size:12px">${x.type}: ${x.msg}</div>`).join("")||`<div style="color:var(--mut);font-size:12px">Matches baseline</div>`)}
+function render(s){last=s;if(s.topo&&s.host_count&&s.switch_count&&(s.host_count!==Object.keys(BASE.hosts).length||s.switch_count!==Object.keys(NODES).length-Object.keys(BASE.hosts).length)){CURRENT_TOPO=buildBrowserTopology(s.host_count,s.switch_count)}
+  draw(s);info(s);$("sF").textContent=s.findings.length;$("sC").textContent=s.score;$("sH").textContent=s.host_count||Object.keys(BASE.hosts).length;$("sS").textContent=s.switch_count||4;$("sD").textContent=Number($("sH").textContent)+Number($("sS").textContent);$("sL").textContent=(s.topo||CURRENT_TOPO).links.length;
+  $("log").innerHTML=s.log.slice().reverse().map(l=>`<div class="t-${l.event}">[${l.event}] ${l.type} — ${l.msg}</div>`).join("");
+  const fx=s.fixed||[];$("mF").textContent=fx.length||(s.log.filter(l=>l.event==="REMEDIATE").length);
+  if(fx.length){const d=fx.reduce((a,x)=>a+x.d,0)/fx.length,r=fx.reduce((a,x)=>a+x.r,0)/fx.length;$("mD").textContent=d.toFixed(2)+" s";$("mR").textContent=(r*1000).toFixed(1)+" ms"}
+  avail.push(s.findings.length?0:1);if(avail.length>120)avail.shift();$("mA").textContent=(100*avail.reduce((a,b)=>a+b,0)/avail.length).toFixed(1)+"%"}
+async function tick(){render(await snapshot())}
+document.querySelectorAll(".f").forEach(b=>b.onclick=async()=>{await inject(b.dataset.k);tick()});
+$("bRef").onclick=tick;$("bAuto").onclick=()=>setAuto(!auto);$("bTheme").onclick=()=>{const r=document.documentElement;r.dataset.theme=r.dataset.theme==="light"?"dark":"light"};$("bReset").onclick=async()=>{await reset();avail=[];tick()};
+ $("applyTopology").onclick=applyTopology;
+ $("liveCommandsButton").onclick=showLiveCommands;
+ $("hostCount").addEventListener("input",updateLiveCommands);
+ $("switchCount").addEventListener("input",updateLiveCommands);
+(async()=>{try{await call("/api/snapshot");API=true}catch(e){}$("mode").textContent=API?"Backend: Flask API":"Browser simulation";tick();setInterval(tick,1000)})();
+// ---------- Testing Lab (15 tests + stress, mapped to the four team roles) ----------
+const mk=()=>{const o=Object.create(Sim);o.st=clone({h:BASE.hosts,r:BASE.routes,f:BASE.fw,p:BASE.ports,w:BASE.flows});o.log=[];o.t0={};o.fixed=[];return o};
+const KINDS=["IP","ROUTING","FIREWALL","PORT","SWITCH"],PRI=["1,2","2,1","2,2","4,1"];
+const route=f=>PRI.some(p=>f.has(p))?"BACKUP":"PRIMARY";
+function bench(n){const ts=[];for(let i=0;i<n;i++){const o=mk(),t=performance.now();o.inject(KINDS[i%5]);o.cycle();ts.push(performance.now()-t)}ts.sort((a,b)=>a-b);const m=ts.reduce((a,b)=>a+b,0)/n;return[m<50,`mean ${m.toFixed(3)} ms · p95 ${ts[Math.floor(n*.95)].toFixed(3)} ms`]}
+const TESTS=[];
+KINDS.forEach(k=>{TESTS.push(["Detect "+k,"Thirudhanish",()=>{const o=mk();o.inject(k);const d=o.detect();return[d.length>=1&&d.every(x=>x.type===k),d.length+" finding(s)"]}]);
+ TESTS.push(["Remediate "+k,"Praveenkanth",()=>{const o=mk();o.inject(k);o.cycle();return[o.detect().length===0,o.log[o.log.length-1].msg]}])});
+TESTS.push(["No false positives on baseline","Thirudhanish",()=>[mk().detect().length===0,"0 findings"]],
+["Stress: 5 simultaneous faults","Praveenkanth",()=>{const o=mk();KINDS.forEach(k=>o.inject(k));const c=o.snap().score;o.cycle();return[c===1&&o.detect().length===0,"C="+c+", all fixed"]}],
+["Idempotent remediation","Praveenkanth",()=>{const o=mk();o.inject("SWITCH");o.cycle();const n=o.log.length;o.cycle();return[o.log.length===n,"2nd cycle no change"]}],
+["Detection-only keeps fault","Pratheeswaran",()=>{const o=mk();o.inject("ROUTING");o.detect();o.detect();return[o.detect().length===1,"fault persists without auto-fix"]}],
+["Failover primary→backup→primary","Rajasimman",()=>{const r=[route(new Set()),route(new Set(["1,2"])),route(new Set(["1,2","3,1"])),route(new Set())];return[r.join()==="PRIMARY,BACKUP,BACKUP,PRIMARY",r.join("→")]}],
+["Flow rules cover primary path","Rajasimman",()=>[["s1","s2","s4"].every(s=>BASE.flows[s]),"s1, s2, s4 present"]],
+["Benchmark: 200 detect+fix loops","Pratheeswaran",()=>bench(200)]);
+let rows=[];
+function runAll(){rows=TESTS.map(([n,o,f],i)=>{const t=performance.now();let r;try{r=f()}catch(e){r=[false,"error: "+e.message]}return{i:i+1,n,o,ok:r[0],d:r[1],ms:performance.now()-t}});showT()}
+function showT(){const p=rows.filter(r=>r.ok).length,mx=Math.max(...rows.map(r=>r.ms),.001);
+ $("tBody").innerHTML=rows.map(r=>`<tr><td>${r.i}</td><td>${r.n}</td><td>${r.o}</td><td class="${r.ok?"pp":"pf"}">${r.ok?"PASS":"FAIL"}</td><td><span class="mb"><i style="width:${Math.max(4,r.ms/mx*100)}%"></i></span>${r.ms.toFixed(2)}</td><td>${r.d}</td></tr>`).join("");
+ $("tSum").innerHTML=`<b>${p}/${rows.length} passed (${(100*p/rows.length).toFixed(0)}%)</b>`+["Rajasimman","Thirudhanish","Praveenkanth","Pratheeswaran"].map(o=>{const x=rows.filter(r=>r.o===o);return`<span class="badge">${o}: ${x.filter(r=>r.ok).length}/${x.length}</span>`}).join("");
+ $("tOut").value="id,test,owner,result,ms,detail\n"+rows.map(r=>[r.i,r.n,r.o,r.ok?"PASS":"FAIL",r.ms.toFixed(3),r.d].map(x=>'"'+x+'"').join(",")).join("\n")}
+$("tRun").onclick=runAll;
+$("tStress").onclick=()=>{const t=performance.now();let ok=0;for(let i=0;i<200;i++){const o=mk();KINDS.forEach(k=>o.inject(k));o.cycle();if(!o.detect().length)ok++}rows.push({i:rows.length+1,n:"Stress ×200 (5 faults each)",o:"Pratheeswaran",ok:ok===200,d:ok+"/200 rounds healed",ms:performance.now()-t});showT()};
+$("tCsv").onclick=()=>{const t=$("tOut");t.hidden=!t.hidden;if(!t.hidden)t.select()};
+runAll();
+</script>
+</body>
+</html>

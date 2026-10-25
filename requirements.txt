@@ -1,0 +1,3 @@
+flask>=3.0
+# live mode only (Linux/WSL2):
+# mininet, os-ken
